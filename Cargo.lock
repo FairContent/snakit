@@ -487,8 +487,10 @@ dependencies = [
  "assert_cmd",
  "assert_fs",
  "clap",
+ "once_cell",
  "predicates",
  "pretty_assertions",
+ "regex",
 ]
 
 [[package]]

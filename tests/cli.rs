@@ -42,7 +42,7 @@ fn invalid_path() -> Result<()> {
         .arg("invalid_path")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("is invalid or not a directory"));
+        .stderr(predicate::str::contains("does not exist"));
 
     Ok(())
 }
@@ -58,7 +58,7 @@ fn path_is_file() -> Result<()> {
         .arg(file.path())
         .assert()
         .failure()
-        .stderr(predicate::str::contains("is invalid or not a directory"));
+        .stderr(predicate::str::contains("is not a directory"));
 
     Ok(())
 }
