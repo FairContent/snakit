@@ -46,6 +46,7 @@ fn invalid_path() -> Result<()> {
 
     Ok(())
 }
+
 // --------------------------------------------------
 
 #[test]
@@ -59,6 +60,68 @@ fn path_is_file() -> Result<()> {
         .assert()
         .failure()
         .stderr(predicate::str::contains("is not a directory"));
+
+    Ok(())
+}
+
+// --------------------------------------------------
+
+#[test]
+fn one_file() -> Result<()> {
+    let tmp_dir = TempDir::new()?;
+    let file = tmp_dir.child("tmp file.txt");
+    file.touch()?;
+
+    Command::cargo_bin(PRG)?
+        .arg(tmp_dir.path())
+        .assert()
+        .success();
+
+    let renamed_file = tmp_dir.child("tmp_file.txt");
+    assert!(renamed_file.exists());
+
+    Ok(())
+}
+
+// --------------------------------------------------
+
+#[test]
+fn multiple_files() -> Result<()> {
+    let tmp_dir = TempDir::new()?;
+    let files = ["tmp file.txt", "another file.txt"];
+    for file in &files {
+        let file_path = tmp_dir.child(file);
+        file_path.touch()?;
+    }
+
+    Command::cargo_bin(PRG)?
+        .arg(tmp_dir.path())
+        .assert()
+        .success();
+
+    for file in &files {
+        let renamed_file = tmp_dir.child(file.replace(" ", "_"));
+        assert!(renamed_file.exists());
+    }
+
+    Ok(())
+}
+
+// --------------------------------------------------
+
+#[test]
+fn nested_directories() -> Result<()> {
+    let tmp_dir = TempDir::new()?;
+    let file = tmp_dir.child("test/tmp file.txt");
+    file.touch()?;
+
+    Command::cargo_bin(PRG)?
+        .arg(tmp_dir.path())
+        .assert()
+        .success();
+
+    let renamed_file = tmp_dir.child("test/tmp_file.txt");
+    assert!(renamed_file.exists());
 
     Ok(())
 }

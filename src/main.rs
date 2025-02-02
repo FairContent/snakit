@@ -8,13 +8,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use once_cell::sync::Lazy;
-use regex::Regex;
-
-// --------------------------------------------------
-
-// Lazily initialized regular expression that matches one or more whitespace characters.
-static RE_WHITESPACE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\s+").unwrap());
+use heck::ToSnakeCase;
 
 // --------------------------------------------------
 
@@ -41,6 +35,7 @@ struct Args {
 // --------------------------------------------------
 
 // Determines whether a file is hidden.
+// TODO: On Windows, hidden files might be determined by file attributes.
 fn is_hidden(file_name: &OsStr) -> bool {
     file_name.to_str().is_some_and(|name| name.starts_with('.'))
 }
@@ -51,17 +46,56 @@ fn is_hidden(file_name: &OsStr) -> bool {
 fn rename_file_or_folder(
     path: &Path,
     original_name: &str,
-    new_name: &str,
+    // new_name: &str,
     args: &Args,
 ) -> Result<()> {
-    let parent_dir = path.parent().context("Failed to get parent directory")?;
-    let new_path = parent_dir.join(new_name);
+    let parent_dir = path
+        .parent()
+        .context(format!("Failed to get parent directory of {:?}", path))?;
+    let original_file_stem = Path::new(original_name)
+        .file_stem()
+        .context(format!("Failed to extract the stem from {:?}", original_name))?;
+    let snake_stem = original_file_stem.to_string_lossy().to_snake_case();
+    let original_ext = Path::new(original_name).extension();
+    
+    let new_name =
+        if let Some(ext) = original_ext {
+            format!("{}.{}", snake_stem, ext.to_string_lossy())
+        } else {
+            snake_stem.clone()
+        };
+
+    if original_name == new_name {
+        return Ok(());
+    }
+    
+    let mut candidate = parent_dir.join(&new_name);
+
+    if candidate.exists() {
+        let new_file_stem = Path::new(&new_name)
+            .file_stem()
+            .context(format!("Failed to extract the stem from {:?}", new_name))?;
+        // let ext = Path::new(new_name).extension();
+        let mut counter = 1;
+
+        while candidate.exists() {
+            let new_stem = format!("{}{}", new_file_stem.to_string_lossy(), counter);
+
+            if let Some(ext) = original_ext {
+                candidate = parent_dir.join(format!("{}.{}", new_stem, ext.to_string_lossy()));
+            } else {
+                candidate = parent_dir.join(&new_stem);
+            }
+
+            counter += 1;
+        }
+    }
 
     if args.dry_run {
         println!("[Dry Run] Would rename '{original_name}' to '{new_name}'");
     } else {
-        fs::rename(path, &new_path)
-            .with_context(|| format!("Failed to rename '{:?}' to '{:?}'", path, new_path))?;
+        fs::rename(path, &candidate)
+            .with_context(|| format!("Failed to rename '{:?}' to '{:?}'", path, candidate))?;
         if args.verbose {
             println!("Renamed '{original_name}' to '{new_name}'")
         }
@@ -71,9 +105,20 @@ fn rename_file_or_folder(
 
 // --------------------------------------------------
 
-fn to_snake_case(name: &str) -> String {
-    RE_WHITESPACE.replace_all(name.trim(), "_").to_lowercase()
-}
+// fn to_snake_case(name: &str) -> Result<String> {
+//     let path = Path::new(name);
+//     let file_stem = path
+//         .file_stem()
+//         .context(format!("Failed to extract the stem from {:?}", name))?;
+//     let ext = path.extension();
+//     let file_stem_snake = file_stem.to_string_lossy().to_snake_case();
+
+//     if let Some(ext) = ext {
+//         Ok(format!("{}.{}", file_stem_snake, ext.to_string_lossy()))
+//     } else {
+//         Ok(file_stem_snake)
+//     }
+// }
 
 // --------------------------------------------------
 
@@ -110,11 +155,11 @@ fn process_dir(path: &Path, args: &Args) -> Result<()> {
         let original_name = file_name
             .to_str()
             .context(format!("Failed to call to_str on {:?}", file_name))?;
-        let new_name = to_snake_case(original_name);
-
-        if original_name != new_name {
-            rename_file_or_folder(&path, original_name, &new_name, args)?;
-        }
+        // let new_name = to_snake_case(original_name)?;
+        rename_file_or_folder(&path, original_name, args)?;
+        // if original_name != new_name {
+        //     rename_file_or_folder(&path, original_name, &new_name, args)?;
+        // }
     }
 
     Ok(())
@@ -126,11 +171,12 @@ fn main() -> Result<()> {
     let args = Args::parse();
     let path = &args.path;
 
+    // Check if the provided path exists
     if !path.exists() {
         anyhow::bail!("Error: Path {:?} does not exist", path);
     }
 
-    // Do not process symlinks
+    // Check if the provided path is a directory
     let metadata = fs::symlink_metadata(path)
         .with_context(|| format!("Failed to get metadata for: {:?}", path))?;
     if !metadata.is_dir() {
