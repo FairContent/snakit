@@ -125,3 +125,80 @@ fn nested_directories() -> Result<()> {
 
     Ok(())
 }
+
+// --------------------------------------------------
+
+#[test]
+fn hidden_file() -> Result<()> {
+    let tmp_dir = TempDir::new()?;
+    let file = tmp_dir.child(".tmp file.txt");
+    file.touch()?;
+
+    Command::cargo_bin(PRG)?
+        .args([tmp_dir.path().to_str().unwrap(), "--include-hidden"])
+        .assert()
+        .success();
+
+    let renamed_file = tmp_dir.child(".tmp_file.txt");
+    assert!(renamed_file.exists());
+
+    Ok(())
+}
+
+// --------------------------------------------------
+
+#[test]
+fn hidden_file_skipped() -> Result<()> {
+    let tmp_dir = TempDir::new()?;
+    let file = tmp_dir.child(".tmp file.txt");
+    file.touch()?;
+
+    Command::cargo_bin(PRG)?
+        .arg(tmp_dir.path())
+        .assert()
+        .success();
+
+    let not_renamed_file = tmp_dir.child(".tmp file.txt");
+    assert!(not_renamed_file.exists());
+
+    Ok(())
+}
+
+// --------------------------------------------------
+
+#[test]
+fn verbose() -> Result<()> {
+    let tmp_dir = TempDir::new()?;
+    let file = tmp_dir.child("tmp file.txt");
+    file.touch()?;
+
+    Command::cargo_bin(PRG)?
+        .args([tmp_dir.path().to_str().unwrap(), "--verbose"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Renamed"));
+
+    Ok(())
+}
+
+// --------------------------------------------------
+
+#[test]
+fn collision() -> Result<()> {
+    let tmp_dir = TempDir::new()?;
+    let file = tmp_dir.child("tmp file.txt");
+    file.touch()?;
+
+    let file2 = tmp_dir.child("tmp_file.txt");
+    file2.touch()?;
+
+    Command::cargo_bin(PRG)?
+        .arg(tmp_dir.path())
+        .assert()
+        .success();
+
+    let renamed_file = tmp_dir.child("tmp_file_1.txt");
+    assert!(renamed_file.exists());
+
+    Ok(())
+}

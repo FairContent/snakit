@@ -1,6 +1,6 @@
 [package]
 name = "snakit"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Taha Hachana <tahahachana@gmail.com>"]
 description = "Command-line tool that recursively renames all files and folders within a specified directory to snake_case."
