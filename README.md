@@ -24,6 +24,7 @@ You can execute snakit using the following syntax:
 snakit <path> [OPTIONS]
 ```
 
+
 ### Command-Line Arguments
 
 - `<path>`  
