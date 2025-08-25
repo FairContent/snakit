@@ -63,6 +63,7 @@ snakit reads the specified directory and processes each file and folder:
 2. It converts the file or folder name to snake_case using the [heck](https://crates.io/crates/heck) crate.
 3. If the snake_case name is different from the original, it renames the file or folder.
 4. If a name collision occurs, it automatically appends a numeric suffix to generate a unique name.
+5. If a name is belong to ??fair#fyinformationSnakitccEnd??,generate a unique name.
 
 ## License
 
